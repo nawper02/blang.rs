@@ -1,5 +1,9 @@
 // blang.rs is a command line rpn calculator.
-// next: border, prettify, stack view, commands, modify how commands are handled to allow for function inputs (not taking immedietly)
+// next: stack view, commands, modify how commands are handled to allow for function inputs (not taking immedietly)
+//      probably no user defined functions. if yes, they'll just be macros, no inputs.
+//      unless datatypes like tuples or vecs can be used to contain multiple values as inputs.
+// need to get rid of command buffer. make insert buffer input buffer. make process_event check it
+//      against commands like it already does. replace command mode with something else like coding mode.
 
 #![allow(dead_code)]
 #![allow(unused)]
@@ -90,23 +94,88 @@ fn print_formatted_at(stdout: &mut Stdout, text: &str, formats: &[TextFormat], x
     execute!(stdout, SetAttribute(Attribute::Reset)).unwrap();
 }
 
+fn draw_border(stdout: &mut Stdout, context: &AppContext) {
+    let horizontal_edge = "─".repeat((context.terminal_size.cols - 2) as usize);
+    let vertical_edge = "│";
+
+    // Top border
+    execute!(stdout, MoveTo(0, 0), Print("┌"), Print(&horizontal_edge), Print("┐")).unwrap();
+
+    // Side borders
+    for row in 1..context.terminal_size.rows - 1 {
+        execute!(stdout, MoveTo(0, row), Print(vertical_edge)).unwrap();
+        execute!(stdout, MoveTo(context.terminal_size.cols - 1, row), Print(vertical_edge)).unwrap();
+    }
+
+    // Bottom border
+    execute!(stdout, MoveTo(0, context.terminal_size.rows - 1), Print("└"), Print(&horizontal_edge), Print("┘")).unwrap();
+}
+
 fn update_input_area(stdout: &mut Stdout, context: &AppContext) {
-    execute!(stdout, MoveTo(0, context.terminal_size.rows - 1), Clear(ClearType::CurrentLine)).unwrap();
-    execute!(stdout, SetBackgroundColor(Color::White), SetForegroundColor(Color::Black)).unwrap();
+    // Determine the position for the input area within the border
+    let start_col = 1; // Start one column to the right due to the border
+    let end_col = context.terminal_size.cols - 1; // End one column before the right border
+    // let start_row = 1;
+    // let end_row = context.terminal_size.rows - 1;
+    let input_row = context.terminal_size.rows - 2;
+
+    // Clear the previous input area line
+    execute!(stdout, MoveTo(start_col, input_row), Clear(ClearType::CurrentLine)).unwrap();
+
+    // Set background and foreground color for input area
+    //execute!(stdout, SetBackgroundColor(Color::Black), SetForegroundColor(Color::White)).unwrap();
 
     let buffer_to_display = match context.current_mode {
-        AppMode::Insert => &context.input_buffer,
-        AppMode::Command => &context.command_buffer,
+        AppMode::Insert => format!(" » {}", context.input_buffer),
+        AppMode::Command => format!(" : {}", context.command_buffer),
     };
 
-    let blank_line = " ".repeat(context.terminal_size.cols as usize);
-    execute!(stdout, Print(&blank_line)).unwrap();
 
-    execute!(stdout, MoveTo(0, context.terminal_size.rows - 1)).unwrap();
-    let padded_input = format!(" {} ", buffer_to_display);
-    execute!(stdout, Print(&padded_input)).unwrap();
+    // Calculate the maximum length of the buffer display
+    let max_buffer_length = end_col as usize - start_col as usize;
+    let display_buffer = format!("{} ", buffer_to_display); // spaces either side for padding
 
+    // Trim or pad the buffer to fit within the bordered area
+    let padded_input = if display_buffer.len() > max_buffer_length {
+        // Trim the buffer and add ellipsis if it's too long
+        format!("{}...", &display_buffer[..max_buffer_length - 3])
+    } else {
+        // Pad the buffer if it's too short
+        format!("{:width$}", display_buffer, width = max_buffer_length)
+    };
+
+    // Print the adjusted buffer
+    execute!(stdout, MoveTo(start_col, input_row), Print(&padded_input)).unwrap();
+
+    // Reset background and foreground color
     execute!(stdout, SetBackgroundColor(Color::Reset), SetForegroundColor(Color::Reset)).unwrap();
+}
+
+
+fn update_graphics(stdout: &mut Stdout, context: &AppContext) {
+    execute!(stdout, Clear(ClearType::All)).unwrap();
+
+    // Draw the border
+
+    let formats = [TextFormat::Bold];
+    let mode_text = match context.current_mode {
+        AppMode::Insert => " Insert Mode",
+        AppMode::Command => " Command Mode",
+    };
+
+    // print AppMode text
+    print_formatted_at(stdout, mode_text, &formats, 1, context.terminal_size.rows - 3);
+
+    // update area inside border
+    update_input_area(stdout, context);
+
+    // draw border after other stuff because of calls to Clear(ClearType::CurrentLine)
+    draw_border(stdout, context);
+
+    // print title after to write over top border
+    print_formatted_at(stdout, " blang.rs ", &formats, context.terminal_size.cols / 2 - 4, 0);
+
+    //execute!(stdout, MoveTo(1, context.terminal_size.rows - 2)).unwrap();
 }
 
 fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) {
@@ -174,21 +243,6 @@ fn handle_input_buffer(context: &mut AppContext) {
 
 }
 
-fn update_graphics(stdout: &mut Stdout, context: &AppContext) {
-    execute!(stdout, Clear(ClearType::All)).unwrap();
-
-    let formats = [TextFormat::Bold];
-    let mode_text = match context.current_mode {
-        AppMode::Insert => "Insert Mode",
-        AppMode::Command => "Command Mode",
-    };
-
-    print_formatted_at(stdout, "blang.rs", &formats, context.terminal_size.cols / 2 - 4, 0);
-    print_formatted_at(stdout, mode_text, &formats, 0, context.terminal_size.rows - 2);
-
-    update_input_area(stdout, context);
-}
-
 fn input_loop(context: &mut AppContext, stdout: &mut Stdout) {
     update_graphics(stdout, context);
 
@@ -207,7 +261,6 @@ fn input_loop(context: &mut AppContext, stdout: &mut Stdout) {
         }
     }
 }
-
 
 /*
              @@@@@@@@@@@@@%                        @@@@@@@.
