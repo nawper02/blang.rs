@@ -2,8 +2,6 @@
 // next: stack view, commands, modify how commands are handled to allow for function inputs (not taking immedietly)
 //      probably no user defined functions. if yes, they'll just be macros, no inputs.
 //      unless datatypes like tuples or vecs can be used to contain multiple values as inputs.
-// need to get rid of command buffer. make insert buffer input buffer. make process_event check it
-//      against commands like it already does. replace command mode with something else like coding mode.
 
 #![allow(dead_code)]
 #![allow(unused)]
@@ -26,8 +24,21 @@ enum TextFormat {
 
 #[derive(PartialEq)]
 enum AppMode {
-    Insert,
-    Command,
+    Stack,
+    Program,
+    Matrix,
+    Variables,
+}
+
+impl AppMode {
+    fn next(&self) -> AppMode {
+        match self {
+            AppMode::Stack => AppMode::Program,
+            AppMode::Program => AppMode::Matrix,
+            AppMode::Matrix => AppMode::Variables,
+            AppMode::Variables => AppMode::Stack,
+        }
+    }
 }
 
 #[derive(PartialEq)]
@@ -55,7 +66,6 @@ impl TerminalSize {
 
 struct AppContext {
     input_buffer: String,
-    command_buffer: String,
     terminal_size: TerminalSize,
     current_mode: AppMode,
     should_quit: LoopControl,
@@ -68,9 +78,8 @@ fn main() {
 
     let mut context = AppContext {
         input_buffer: String::new(),
-        command_buffer: String::new(),
         terminal_size: TerminalSize::new(),
-        current_mode: AppMode::Command,
+        current_mode: AppMode::Stack,
         should_quit: LoopControl::Continue,
     };
 
@@ -125,15 +134,9 @@ fn update_input_area(stdout: &mut Stdout, context: &AppContext) {
     // Set background and foreground color for input area
     //execute!(stdout, SetBackgroundColor(Color::Black), SetForegroundColor(Color::White)).unwrap();
 
-    let buffer_to_display = match context.current_mode {
-        AppMode::Insert => format!(" » {}", context.input_buffer),
-        AppMode::Command => format!(" : {}", context.command_buffer),
-    };
-
-
     // Calculate the maximum length of the buffer display
     let max_buffer_length = end_col as usize - start_col as usize;
-    let display_buffer = format!("{} ", buffer_to_display); // spaces either side for padding
+    let display_buffer = format!(" » {} ", context.input_buffer); // spaces either side for padding
 
     // Trim or pad the buffer to fit within the bordered area
     let padded_input = if display_buffer.len() > max_buffer_length {
@@ -159,8 +162,10 @@ fn update_graphics(stdout: &mut Stdout, context: &AppContext) {
 
     let formats = [TextFormat::Bold];
     let mode_text = match context.current_mode {
-        AppMode::Insert => " Insert Mode",
-        AppMode::Command => " Command Mode",
+        AppMode::Stack => " stack",
+        AppMode::Program => " program",
+        AppMode::Matrix => " matrix",
+        AppMode::Variables => " variables",
     };
 
     // print AppMode text
@@ -182,36 +187,20 @@ fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) {
     match event {
         Event::Key(key_event) => {
             match key_event.code {
-                // catch immediete commands
                 KeyCode::Tab => {
-                    context.current_mode = match context.current_mode {
-                        AppMode::Insert => AppMode::Command,
-                        AppMode::Command => AppMode::Insert,
-                    };
+                    context.input_buffer.clear();
+                    context.current_mode = context.current_mode.next();
                 },
-                KeyCode::Backspace => match context.current_mode {
-                    AppMode::Insert => { context.input_buffer.pop(); },
-                    AppMode::Command => { context.command_buffer.pop(); },
+                KeyCode::Backspace => {
+                    context.input_buffer.pop();
+                }
+                KeyCode::Enter => {
+                    parse_input(context);
+                    context.input_buffer.clear();
                 },
-                KeyCode::Enter => match context.current_mode {
-                    AppMode::Insert => {
-                        handle_input_buffer(context);
-                        context.input_buffer.clear();
-                    },
-                    AppMode::Command => {
-                        handle_command_buffer(context);
-                        context.command_buffer.clear();
-                    },
-                },
-                // catch word commands or push to buffers
-                KeyCode::Char(c) => match context.current_mode {
-                    // if in insert mode, just push keys to buffer
-                    AppMode::Insert => { context.input_buffer.push(c); },
-                    // if in command mode, push keys to buffer and immedietly handle the buffer
-                    AppMode::Command => {
-                        context.command_buffer.push(c);
-                        handle_command_buffer(context);
-                    },
+                KeyCode::Char(c) =>  {
+                    context.input_buffer.push(c);
+                    handle_quick_commands(context)
                 },
                 _ => {},
             }
@@ -224,22 +213,31 @@ fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) {
     }
 }
 
-fn handle_command_buffer(context: &mut AppContext) {
-    match context.command_buffer.as_str() {
+fn handle_quick_commands(context: &mut AppContext) {
+    match context.input_buffer.as_str() {
         "quit" => {
             context.should_quit = LoopControl::Break;
         },
-        "clear" => {
+        "*" => {
+            context.input_buffer.clear()
         },
-        "echo" => {
+        "/" => {
+            context.input_buffer.clear()
         },
-        "help" => {
+        "+" => {
+            context.input_buffer.clear()
+        },
+        "-" => {
+            context.input_buffer.clear()
+        },
+        "^" => {
+            context.input_buffer.clear()
         },
         _ => {}
     }
 }
 
-fn handle_input_buffer(context: &mut AppContext) {
+fn parse_input(context: &mut AppContext) {
 
 }
 
