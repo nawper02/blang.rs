@@ -1,9 +1,9 @@
 // src/app/context
 
-use super::mode::AppMode;
 use crate::utils::misc::LoopControl;
 use crate::utils::terminal::TerminalSize;
 use crate::stack::item::StackItem;
+
 pub struct AppContext {
     pub input_buffer: String,
     pub terminal_size: TerminalSize,
@@ -20,6 +20,25 @@ impl Default for AppContext {
             current_mode: AppMode::Stack,
             should_quit: LoopControl::Continue,
             stack: Vec::new(),
+        }
+    }
+}
+
+#[derive(PartialEq)]
+pub(crate) enum AppMode {
+    Stack,
+    Program,
+    Matrix,
+    Variables,
+}
+
+impl AppMode {
+    pub(crate) fn next(&self) -> AppMode {
+        match self {
+            AppMode::Stack => AppMode::Program,
+            AppMode::Program => AppMode::Matrix,
+            AppMode::Matrix => AppMode::Variables,
+            AppMode::Variables => AppMode::Stack,
         }
     }
 }

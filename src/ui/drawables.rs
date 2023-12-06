@@ -5,7 +5,7 @@ use crossterm::cursor::MoveTo;
 use crossterm::terminal::{Clear, ClearType};
 
 use crate::app::context::AppContext;
-use crate::app::mode::AppMode;
+use crate::app::context::AppMode;
 use crate::ui::text_formatting::{print_formatted_at, format_stack_item, TextFormat};
 
 pub(crate) trait Drawable {
