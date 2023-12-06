@@ -49,10 +49,11 @@ impl TerminalSize {
 
 struct AppContext {
     input_buffer: String,
+    command_buffer: String,  // New buffer for command mode
     terminal_size: TerminalSize,
     current_mode: AppMode,
-    // ... other fields ...
 }
+
 
 fn main() {
     let mut stdout = stdout();
@@ -66,6 +67,7 @@ fn main() {
     // initialize app context
     let mut context = AppContext {
         input_buffer: String::new(),
+        command_buffer: String::new(),
         terminal_size: TerminalSize::new(),
         current_mode: AppMode::Command,
     };
@@ -103,13 +105,19 @@ fn update_input_area(stdout: &mut Stdout, context: &AppContext) {
         SetForegroundColor(Color::Black)
     ).unwrap();
 
+    // Determine which buffer to display based on the current mode
+    let buffer_to_display = match context.current_mode {
+        AppMode::Insert => &context.input_buffer,
+        AppMode::Command => &context.command_buffer,
+    };
+
     // Fill the bottom line with spaces to create a white background
     let blank_line = " ".repeat(context.terminal_size.cols as usize);
     execute!(stdout, Print(&blank_line)).unwrap();
 
-    // Move the cursor back to the beginning of the line and print the input buffer
+    // Move the cursor back to the beginning of the line and print the appropriate buffer
     execute!(stdout, MoveTo(0, context.terminal_size.rows - 1)).unwrap();
-    let padded_input = format!(" {} ", &context.input_buffer);
+    let padded_input = format!(" {} ", buffer_to_display);
     execute!(stdout, Print(&padded_input)).unwrap();
 
     // Reset colors
@@ -125,22 +133,24 @@ fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) ->
         Event::Key(key_event) => match key_event.code {
             KeyCode::Char('q') if context.current_mode == AppMode::Command => return LoopControl::Break,
             KeyCode::Esc => context.current_mode = AppMode::Command,
-            KeyCode::Char('i') => context.current_mode = AppMode::Insert,
-            KeyCode::Backspace => {
-                if context.current_mode == AppMode::Insert {
-                    context.input_buffer.pop();
-                }
+            KeyCode::Char('i') if context.current_mode == AppMode::Command => context.current_mode = AppMode::Insert,
+            KeyCode::Backspace => match context.current_mode {
+                AppMode::Insert => { context.input_buffer.pop(); },
+                AppMode::Command => { context.command_buffer.pop(); },
             },
-            KeyCode::Enter => {
-                if context.current_mode == AppMode::Insert {
+            KeyCode::Enter => match context.current_mode {
+                AppMode::Insert => {
                     // process_buffer(&context.input_buffer);
                     context.input_buffer.clear();
-                }
+                },
+                AppMode::Command => {
+                    // process_command(&context.command_buffer);
+                    context.command_buffer.clear();
+                },
             },
-            KeyCode::Char(c) => {
-                if context.current_mode == AppMode::Insert {
-                    context.input_buffer.push(c);
-                }
+            KeyCode::Char(c) => match context.current_mode {
+                AppMode::Insert => { context.input_buffer.push(c); },
+                AppMode::Command => { context.command_buffer.push(c); },
             },
             _ => {},
         },
