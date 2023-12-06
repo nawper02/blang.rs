@@ -2,7 +2,7 @@ use std::io::Stdout;
 use crossterm::execute;
 use crossterm::terminal::{Clear, ClearType};
 
-use crate::app::context::AppContext;
+use crate::data::context::AppContext;
 use crate::ui::drawables::{BorderDrawer, Drawable, InputAreaUpdater, MainAreaUpdater};
 use crate::ui::text_formatting::{print_formatted_at, TextFormat};
 

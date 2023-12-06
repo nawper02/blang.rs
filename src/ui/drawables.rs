@@ -4,8 +4,8 @@ use crossterm::style::{Print};
 use crossterm::cursor::MoveTo;
 use crossterm::terminal::{Clear, ClearType};
 
-use crate::app::context::AppContext;
-use crate::app::context::AppMode;
+use crate::data::context::AppContext;
+use crate::data::context::AppMode;
 use crate::ui::text_formatting::{print_formatted_at, format_stack_item, TextFormat};
 
 pub(crate) trait Drawable {

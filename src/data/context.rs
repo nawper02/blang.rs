@@ -1,4 +1,4 @@
-// src/app/context
+// src/data/context
 
 use crate::utils::misc::LoopControl;
 use crate::utils::terminal::TerminalSize;

@@ -10,7 +10,7 @@
 #![allow(dead_code)]
 #![allow(unused)]
 
-mod app;
+mod data;
 mod stack;
 mod ui;
 mod utils;
@@ -22,8 +22,8 @@ use crossterm::event::{poll, read};
 use crossterm::ExecutableCommand;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
-use app::context::AppContext;
-use app::context::AppMode;
+use data::context::AppContext;
+use data::context::AppMode;
 use control::{flow, parsing, visualization};
 use ui::drawables::{BorderDrawer, Drawable, InputAreaUpdater, MainAreaUpdater};
 use ui::text_formatting::{print_formatted_at, TextFormat};

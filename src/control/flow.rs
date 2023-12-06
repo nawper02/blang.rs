@@ -1,6 +1,6 @@
 use crossterm::event::{Event, KeyCode};
 use std::io::Stdout;
-use crate::app::context::AppContext;
+use crate::data::context::AppContext;
 use crate::control::{parsing, visualization};
 
 pub fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) {

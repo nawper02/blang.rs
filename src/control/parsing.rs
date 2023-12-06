@@ -1,4 +1,4 @@
-use crate::app::context::{AppContext, AppMode};
+use crate::data::context::{AppContext, AppMode};
 use crate::utils::misc::LoopControl;
 
 pub(crate) fn parse_quick_cmds(context: &mut AppContext) {
