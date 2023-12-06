@@ -1,9 +1,12 @@
 // blang.rs is a command line rpn calculator.
+
 // next:
 //      1.   stack view, commands
 //      2.   program view, text editing capabilites (unless just load files)
 //      3.   variables view, arrow key to navigate, enter to select and push
 //      4.   matrix view, arrow keys to navigate, input buffer routed to cells
+// refactor:
+//      1. move stuff to separate files
 
 #![allow(dead_code)]
 #![allow(unused)]
@@ -85,7 +88,7 @@ fn main() {
         should_quit: LoopControl::Continue,
     };
 
-    input_loop(&mut context, &mut stdout);
+    program_loop(&mut context, &mut stdout);
 
     disable_raw_mode().unwrap();
     stdout.execute(Show).unwrap();
@@ -126,8 +129,6 @@ fn update_input_area(stdout: &mut Stdout, context: &AppContext) {
     // Determine the position for the input area within the border
     let start_col = 1; // Start one column to the right due to the border
     let end_col = context.terminal_size.cols - 1; // End one column before the right border
-    // let start_row = 1;
-    // let end_row = context.terminal_size.rows - 1;
     let input_row = context.terminal_size.rows - 2;
 
     // Clear the previous input area line
@@ -167,6 +168,8 @@ fn update_main_area(stdout: &mut Stdout, context: &AppContext) {
 
     // print AppMode text
     print_formatted_at(stdout, mode_text, &[TextFormat::Bold], 1, context.terminal_size.rows - 3);
+
+    //todo: match on current mode and establish area to print.
 }
 
 
@@ -183,6 +186,7 @@ fn update_graphics(stdout: &mut Stdout, context: &AppContext) {
     draw_border(stdout, context);
 
     // print title after to write over top border
+    // todo: replace with a title print method that prints title in a box?
     print_formatted_at(stdout, " blang.rs ", &[TextFormat::Bold], context.terminal_size.cols / 2 - 4, 0);
 
 }
@@ -192,10 +196,12 @@ fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) {
         Event::Key(key_event) => {
             match key_event.code {
                 KeyCode::Tab => {
+                    // change mode
                     //context.input_buffer.clear();
                     context.current_mode = context.current_mode.next();
                 },
                 KeyCode::Backspace => {
+                    // delete
                     context.input_buffer.pop();
                 }
                 KeyCode::Enter => {
@@ -204,6 +210,7 @@ fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) {
                 },
                 KeyCode::Char(c) =>  {
                     context.input_buffer.push(c);
+                    // for single character commands (getch style)
                     handle_quick_commands(context)
                 },
                 _ => {},
@@ -259,18 +266,23 @@ fn parse_input(context: &mut AppContext) {
     }
 }
 
-fn input_loop(context: &mut AppContext, stdout: &mut Stdout) {
+fn program_loop(context: &mut AppContext, stdout: &mut Stdout) {
+    // initial graphics update
     update_graphics(stdout, context);
 
     loop {
+        // check for events at 60hz
         if poll(std::time::Duration::from_millis(17)).unwrap() {
             let event = read().unwrap();
             process_event(event, context, stdout);
+            // exit condition
             match context.should_quit {
                 LoopControl::Continue => {
+                    // refresh
                     update_graphics(stdout, context);
                 }
                 LoopControl::Break => {
+                    // quit program
                     break
                 }
             }
