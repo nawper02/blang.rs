@@ -1,7 +1,9 @@
 // blang.rs is a command line rpn calculator.
-// next: stack view, commands, modify how commands are handled to allow for function inputs (not taking immedietly)
-//      probably no user defined functions. if yes, they'll just be macros, no inputs.
-//      unless datatypes like tuples or vecs can be used to contain multiple values as inputs.
+// next:
+//      1.   stack view, commands
+//      2.   program view, text editing capabilites (unless just load files)
+//      3.   variables view, arrow key to navigate, enter to select and push
+//      4.   matrix view, arrow keys to navigate, input buffer routed to cells
 
 #![allow(dead_code)]
 #![allow(unused)]
@@ -171,6 +173,8 @@ fn update_graphics(stdout: &mut Stdout, context: &AppContext) {
     // print AppMode text
     print_formatted_at(stdout, mode_text, &formats, 1, context.terminal_size.rows - 3);
 
+    // display main stuff here (maybe move above two appmode text stuff into this)
+
     // update area inside border
     update_input_area(stdout, context);
 
@@ -188,7 +192,7 @@ fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) {
         Event::Key(key_event) => {
             match key_event.code {
                 KeyCode::Tab => {
-                    context.input_buffer.clear();
+                    //context.input_buffer.clear();
                     context.current_mode = context.current_mode.next();
                 },
                 KeyCode::Backspace => {
@@ -238,7 +242,21 @@ fn handle_quick_commands(context: &mut AppContext) {
 }
 
 fn parse_input(context: &mut AppContext) {
+    // what we do with the input depends on what mode we are in.
+    match context.current_mode {
+        AppMode::Stack => {
 
+        }
+        AppMode::Program => {
+
+        }
+        AppMode::Variables => {
+
+        }
+        AppMode::Matrix => {
+
+        }
+    }
 }
 
 fn input_loop(context: &mut AppContext, stdout: &mut Stdout) {
