@@ -82,6 +82,97 @@ struct AppContext {
     stack: Vec<StackItem>
 }
 
+trait Drawable {
+    fn draw(stdout: &mut Stdout, context: &AppContext); // perhaps in the future it will take &self.
+}
+
+struct BorderDrawer;
+
+impl Drawable for BorderDrawer {
+    fn draw(stdout: &mut Stdout, context: &AppContext) {
+        let horizontal_edge = "─".repeat((context.terminal_size.cols - 2) as usize);
+        let vertical_edge = "│";
+
+        execute!(stdout, MoveTo(0, 0), Print("┌"), Print(&horizontal_edge), Print("┐")).unwrap();
+        for row in 1..context.terminal_size.rows - 1 {
+            execute!(stdout, MoveTo(0, row), Print(vertical_edge)).unwrap();
+            execute!(stdout, MoveTo(context.terminal_size.cols - 1, row), Print(vertical_edge)).unwrap();
+        }
+        execute!(stdout, MoveTo(0, context.terminal_size.rows - 1), Print("└"), Print(&horizontal_edge), Print("┘")).unwrap();
+    }
+}
+
+struct InputAreaUpdater;
+
+impl Drawable for InputAreaUpdater {
+    fn draw(stdout: &mut Stdout, context: &AppContext) {
+        let start_col = 1;
+        let end_col = context.terminal_size.cols - 1;
+        let input_row = context.terminal_size.rows - 2;
+
+        execute!(stdout, MoveTo(start_col, input_row), Clear(ClearType::CurrentLine)).unwrap();
+        let max_buffer_length = end_col as usize - start_col as usize;
+        let display_buffer = format!(" » {} ", context.input_buffer);
+
+        let padded_input = if display_buffer.len() > max_buffer_length {
+            format!("{}...", &display_buffer[..max_buffer_length - 3])
+        } else {
+            format!("{:width$}", display_buffer, width = max_buffer_length)
+        };
+
+        execute!(stdout, MoveTo(start_col, input_row), Print(&padded_input)).unwrap();
+    }
+}
+
+struct MainAreaUpdater;
+
+impl Drawable for MainAreaUpdater {
+    fn draw(stdout: &mut Stdout, context: &AppContext) {
+        let mode_text = match context.current_mode {
+            AppMode::Stack => " stack",
+            AppMode::Program => " program",
+            AppMode::Matrix => " matrix",
+            AppMode::Variables => " variables",
+        };
+
+        print_formatted_at(stdout, mode_text, &[TextFormat::Bold], 1, context.terminal_size.rows - 3);
+
+        match context.current_mode {
+            AppMode::Stack => StackDisplay::draw(stdout, context),
+            AppMode::Program => {},  // Implement as needed
+            AppMode::Matrix => {},   // Implement as needed
+            AppMode::Variables => {}, // Implement as needed
+        }
+    }
+}
+
+struct StackDisplay;
+
+impl Drawable for StackDisplay {
+    fn draw(stdout: &mut Stdout, context: &AppContext) {
+        let stack_display_start = 1; // Top row
+        let stack_display_end = context.terminal_size.rows - 3 - 1; // Just above the mode text row
+        let stack_size = context.stack.len();
+        let total_display_rows = (stack_display_end - stack_display_start) as usize;
+
+        for row in 0..total_display_rows {
+            let display_row = stack_display_end - 1 - row as u16;
+            // Calculate the index in the stack for this row
+            let display_index = stack_size.saturating_sub(total_display_rows) + row;
+
+            let line = if display_index < stack_size {
+                // If the index is within the stack, display the stack item
+                let item = &context.stack[display_index];
+                format!("{:2}: {}", display_index, format_stack_item(item))
+            } else {
+                // If the index is outside the stack, display just the index
+                format!("{:2}: ", display_index)
+            };
+            execute!(stdout, MoveTo(2, display_row), Print(line)).unwrap();
+        }
+    }
+}
+
 fn main() {
     let mut stdout = stdout();
     enable_raw_mode().unwrap();
@@ -94,10 +185,6 @@ fn main() {
         should_quit: LoopControl::Continue,
         stack: Vec::new(),
     };
-
-    context.stack.push(StackItem::Number(0f64));
-    context.stack.push(StackItem::Number(1.1f64));
-    context.stack.push(StackItem::Number(2.23f64));
 
     program_loop(&mut context, &mut stdout);
 
@@ -119,98 +206,6 @@ fn print_formatted_at(stdout: &mut Stdout, text: &str, formats: &[TextFormat], x
     execute!(stdout, SetAttribute(Attribute::Reset)).unwrap();
 }
 
-fn draw_border(stdout: &mut Stdout, context: &AppContext) {
-    let horizontal_edge = "─".repeat((context.terminal_size.cols - 2) as usize);
-    let vertical_edge = "│";
-
-    // Top border
-    execute!(stdout, MoveTo(0, 0), Print("┌"), Print(&horizontal_edge), Print("┐")).unwrap();
-
-    // Side borders
-    for row in 1..context.terminal_size.rows - 1 {
-        execute!(stdout, MoveTo(0, row), Print(vertical_edge)).unwrap();
-        execute!(stdout, MoveTo(context.terminal_size.cols - 1, row), Print(vertical_edge)).unwrap();
-    }
-
-    // Bottom border
-    execute!(stdout, MoveTo(0, context.terminal_size.rows - 1), Print("└"), Print(&horizontal_edge), Print("┘")).unwrap();
-}
-
-fn update_input_area(stdout: &mut Stdout, context: &AppContext) {
-    // Determine the position for the input area within the border
-    let start_col = 1; // Start one column to the right due to the border
-    let end_col = context.terminal_size.cols - 1; // End one column before the right border
-    let input_row = context.terminal_size.rows - 2;
-
-    // Clear the previous input area line
-    execute!(stdout, MoveTo(start_col, input_row), Clear(ClearType::CurrentLine)).unwrap();
-
-    // Set background and foreground color for input area
-    //execute!(stdout, SetBackgroundColor(Color::Black), SetForegroundColor(Color::White)).unwrap();
-
-    // Calculate the maximum length of the buffer display
-    let max_buffer_length = end_col as usize - start_col as usize;
-    let display_buffer = format!(" » {} ", context.input_buffer); // spaces either side for padding
-
-    // Trim or pad the buffer to fit within the bordered area
-    let padded_input = if display_buffer.len() > max_buffer_length {
-        // Trim the buffer and add ellipsis if it's too long
-        format!("{}...", &display_buffer[..max_buffer_length - 3])
-    } else {
-        // Pad the buffer if it's too short
-        format!("{:width$}", display_buffer, width = max_buffer_length)
-    };
-
-    // Print the adjusted buffer
-    execute!(stdout, MoveTo(start_col, input_row), Print(&padded_input)).unwrap();
-
-    // Reset background and foreground color
-    execute!(stdout, SetBackgroundColor(Color::Reset), SetForegroundColor(Color::Reset)).unwrap();
-}
-
-fn update_main_area(stdout: &mut Stdout, context: &AppContext) {
-    let mode_text = match context.current_mode {
-        AppMode::Stack => " stack",
-        AppMode::Program => " program",
-        AppMode::Matrix => " matrix",
-        AppMode::Variables => " variables",
-    };
-
-    // Print AppMode text
-    print_formatted_at(stdout, mode_text, &[TextFormat::Bold], 1, context.terminal_size.rows - 3);
-
-    match context.current_mode {
-        AppMode::Stack => {stack_display(stdout, context)},
-        AppMode::Program => {},
-        AppMode::Matrix => {},
-        AppMode::Variables => {},
-    }
-
-}
-
-fn stack_display(stdout: &mut Stdout, context: &AppContext) {
-    let stack_display_start = 1; // Top row
-    let stack_display_end = context.terminal_size.rows - 3 - 1; // Just above the mode text row
-    let stack_size = context.stack.len();
-    let total_display_rows = (stack_display_end - stack_display_start) as usize;
-
-    for row in 0..total_display_rows {
-        let display_row = stack_display_end - 1 - row as u16;
-        // Calculate the index in the stack for this row
-        let display_index = stack_size.saturating_sub(total_display_rows) + row;
-
-        let line = if display_index < stack_size {
-            // If the index is within the stack, display the stack item
-            let item = &context.stack[display_index];
-            format!("{:2}: {}", display_index, format_stack_item(item))
-        } else {
-            // If the index is outside the stack, display just the index
-            format!("{:2}: ", display_index)
-        };
-        execute!(stdout, MoveTo(2, display_row), Print(line)).unwrap();
-    }
-}
-
 // Helper function to format a StackItem for display
 fn format_stack_item(item: &StackItem) -> String {
     match item {
@@ -222,21 +217,14 @@ fn format_stack_item(item: &StackItem) -> String {
     }
 }
 
-
 fn update_graphics(stdout: &mut Stdout, context: &AppContext) {
     execute!(stdout, Clear(ClearType::All)).unwrap();
 
-    // display main stuff here (maybe move above two appmode text stuff into this)
-    update_main_area(stdout, context);
-
-    // update input area
-    update_input_area(stdout, context);
-
-    // draw border after other stuff because of calls to Clear(ClearType::CurrentLine)
-    draw_border(stdout, context);
+    InputAreaUpdater::draw(stdout, context);
+    MainAreaUpdater::draw(stdout, context);
+    BorderDrawer::draw(stdout, context);
 
     // print title after to write over top border
-    // todo: replace with a title print method that prints title in a box?
     print_formatted_at(stdout, " blang.rs ", &[TextFormat::Bold], context.terminal_size.cols / 2 - 4, 0);
 
 }
