@@ -156,13 +156,8 @@ fn update_input_area(stdout: &mut Stdout, context: &AppContext) {
     execute!(stdout, SetBackgroundColor(Color::Reset), SetForegroundColor(Color::Reset)).unwrap();
 }
 
+fn update_main_area(stdout: &mut Stdout, context: &AppContext) {
 
-fn update_graphics(stdout: &mut Stdout, context: &AppContext) {
-    execute!(stdout, Clear(ClearType::All)).unwrap();
-
-    // Draw the border
-
-    let formats = [TextFormat::Bold];
     let mode_text = match context.current_mode {
         AppMode::Stack => " stack",
         AppMode::Program => " program",
@@ -171,20 +166,25 @@ fn update_graphics(stdout: &mut Stdout, context: &AppContext) {
     };
 
     // print AppMode text
-    print_formatted_at(stdout, mode_text, &formats, 1, context.terminal_size.rows - 3);
+    print_formatted_at(stdout, mode_text, &[TextFormat::Bold], 1, context.terminal_size.rows - 3);
+}
+
+
+fn update_graphics(stdout: &mut Stdout, context: &AppContext) {
+    execute!(stdout, Clear(ClearType::All)).unwrap();
 
     // display main stuff here (maybe move above two appmode text stuff into this)
+    update_main_area(stdout, context);
 
-    // update area inside border
+    // update input area
     update_input_area(stdout, context);
 
     // draw border after other stuff because of calls to Clear(ClearType::CurrentLine)
     draw_border(stdout, context);
 
     // print title after to write over top border
-    print_formatted_at(stdout, " blang.rs ", &formats, context.terminal_size.cols / 2 - 4, 0);
+    print_formatted_at(stdout, " blang.rs ", &[TextFormat::Bold], context.terminal_size.cols / 2 - 4, 0);
 
-    //execute!(stdout, MoveTo(1, context.terminal_size.rows - 2)).unwrap();
 }
 
 fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) {
