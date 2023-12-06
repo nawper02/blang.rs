@@ -3,7 +3,13 @@ use std::io::Stdout;
 use crate::data::context::AppContext;
 use crate::control::{parsing, visualization};
 
-pub fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) {
+// function that takes parsed inputs and routes them to functions in functions.rs
+pub(crate) fn stack_mode_flow(parsed: Vec<&str>) {println!("{:?}", parsed)}
+pub(crate) fn program_mode_flow(parsed: Vec<&str>) {}
+pub(crate) fn variables_mode_flow(parsed: Vec<&str>) {}
+pub(crate) fn matrix_mode_flow(parsed: Vec<&str>) {}
+
+pub(crate) fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) {
     match event {
         Event::Key(key_event) => {
             match key_event.code {
@@ -17,6 +23,7 @@ pub fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout
                     context.input_buffer.pop();
                 }
                 KeyCode::Enter => {
+                    // send buffer to be parsed
                     parsing::parse_input(context);
                     context.input_buffer.clear();
                 },
