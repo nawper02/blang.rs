@@ -1,5 +1,8 @@
 // blang.rs is a command line rpn calculator.
 
+#![allow(dead_code)]
+#![allow(unused)]
+
 use crossterm::{
     execute,
     style::{Color, Print, SetBackgroundColor, SetForegroundColor, SetAttribute, Attribute},
@@ -10,16 +13,16 @@ use crossterm::{
 };
 use std::io::{stdout, Stdout};
 
-enum Format {
+enum TextFormat {
     Bold,
     Italic,
     Underlined,
 }
 
+#[derive(PartialEq)]
 enum AppMode {
     Insert,
     Command,
-    // Other modes can be added here
 }
 
 enum LoopControl {
@@ -64,8 +67,7 @@ fn main() {
     let mut context = AppContext {
         input_buffer: String::new(),
         terminal_size: TerminalSize::new(),
-        current_mode: AppMode::Insert,
-        // ... other initializations ...
+        current_mode: AppMode::Command,
     };
 
     // enter user input loop
@@ -77,22 +79,22 @@ fn main() {
     println!("\nblang done. thank you.");
 }
 
-fn print_formatted_at(stdout: &mut Stdout, text: &str, formats: &[Format], x: u16, y: u16) {
+fn print_formatted_at(stdout: &mut Stdout, text: &str, formats: &[TextFormat], x: u16, y: u16) {
     execute!(stdout, MoveTo(x, y)).unwrap();
     for format in formats {
         match format {
-            Format::Bold => execute!(stdout, SetAttribute(Attribute::Bold)).unwrap(),
-            Format::Italic => execute!(stdout, SetAttribute(Attribute::Italic)).unwrap(),
-            Format::Underlined => execute!(stdout, SetAttribute(Attribute::Underlined)).unwrap(),
+            TextFormat::Bold => execute!(stdout, SetAttribute(Attribute::Bold)).unwrap(),
+            TextFormat::Italic => execute!(stdout, SetAttribute(Attribute::Italic)).unwrap(),
+            TextFormat::Underlined => execute!(stdout, SetAttribute(Attribute::Underlined)).unwrap(),
         }
     }
     execute!(stdout, Print(text)).unwrap();
     execute!(stdout, SetAttribute(Attribute::Reset)).unwrap();
 }
 
-fn update_input_area(stdout: &mut Stdout, input_buffer: &String, terminal_size: &TerminalSize) {
+fn update_input_area(stdout: &mut Stdout, context: &AppContext) {
     // Clear the bottom line
-    execute!(stdout, MoveTo(0, terminal_size.rows - 1), Clear(ClearType::CurrentLine)).unwrap();
+    execute!(stdout, MoveTo(0, context.terminal_size.rows - 1), Clear(ClearType::CurrentLine)).unwrap();
 
     // Set background and foreground colors for the bottom line
     execute!(
@@ -102,12 +104,12 @@ fn update_input_area(stdout: &mut Stdout, input_buffer: &String, terminal_size: 
     ).unwrap();
 
     // Fill the bottom line with spaces to create a white background
-    let blank_line = " ".repeat(terminal_size.cols as usize);
+    let blank_line = " ".repeat(context.terminal_size.cols as usize);
     execute!(stdout, Print(&blank_line)).unwrap();
 
     // Move the cursor back to the beginning of the line and print the input buffer
-    execute!(stdout, MoveTo(0, terminal_size.rows - 1)).unwrap();
-    let padded_input = format!(" {} ", input_buffer);
+    execute!(stdout, MoveTo(0, context.terminal_size.rows - 1)).unwrap();
+    let padded_input = format!(" {} ", &context.input_buffer);
     execute!(stdout, Print(&padded_input)).unwrap();
 
     // Reset colors
@@ -120,17 +122,27 @@ fn update_input_area(stdout: &mut Stdout, input_buffer: &String, terminal_size: 
 
 fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) -> LoopControl {
     match event {
-        Event::Key(key_event) => {
-            match key_event.code {
-                KeyCode::Char('q') => return LoopControl::Break,
-                KeyCode::Backspace => { context.input_buffer.pop(); },
-                KeyCode::Enter => {
-                    //process_buffer(&context.input_buffer);
+        Event::Key(key_event) => match key_event.code {
+            KeyCode::Char('q') if context.current_mode == AppMode::Command => return LoopControl::Break,
+            KeyCode::Esc => context.current_mode = AppMode::Command,
+            KeyCode::Char('i') => context.current_mode = AppMode::Insert,
+            KeyCode::Backspace => {
+                if context.current_mode == AppMode::Insert {
+                    context.input_buffer.pop();
+                }
+            },
+            KeyCode::Enter => {
+                if context.current_mode == AppMode::Insert {
+                    // process_buffer(&context.input_buffer);
                     context.input_buffer.clear();
-                },
-                KeyCode::Char(c) => { context.input_buffer.push(c); },
-                _ => {},
-            }
+                }
+            },
+            KeyCode::Char(c) => {
+                if context.current_mode == AppMode::Insert {
+                    context.input_buffer.push(c);
+                }
+            },
+            _ => {},
         },
         Event::Resize(new_cols, new_rows) => {
             context.terminal_size.update(new_cols, new_rows);
@@ -142,15 +154,19 @@ fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) ->
 }
 
 fn update_graphics(stdout: &mut Stdout, context: &AppContext) {
-    // Clear the screen and redraw title and input area
     execute!(stdout, Clear(ClearType::All)).unwrap();
 
-    let formats = [Format::Bold, Format::Italic];
+    let formats = [TextFormat::Bold];
+    let mode_text = match context.current_mode {
+        AppMode::Insert => "Insert Mode",
+        AppMode::Command => "Command Mode",
+    };
+
     print_formatted_at(stdout, "blang.rs", &formats, context.terminal_size.cols / 2 - 4, 0);
+    print_formatted_at(stdout, mode_text, &formats, 0, context.terminal_size.rows - 2); // Display mode
 
-    update_input_area(stdout, &context.input_buffer, &context.terminal_size);
+    update_input_area(stdout, context);
 }
-
 
 fn input_loop(context: &mut AppContext, stdout: &mut Stdout) {
     update_graphics(stdout, context);
