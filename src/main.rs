@@ -52,6 +52,11 @@ enum LoopControl {
     Break,
 }
 
+enum StackItem {
+    Number(f64),
+    Array(Vec<f64>),
+}
+
 struct TerminalSize {
     cols: u16,
     rows: u16,
@@ -74,6 +79,7 @@ struct AppContext {
     terminal_size: TerminalSize,
     current_mode: AppMode,
     should_quit: LoopControl,
+    stack: Vec<StackItem>
 }
 
 fn main() {
@@ -86,7 +92,12 @@ fn main() {
         terminal_size: TerminalSize::new(),
         current_mode: AppMode::Stack,
         should_quit: LoopControl::Continue,
+        stack: Vec::new(),
     };
+
+    context.stack.push(StackItem::Number(0f64));
+    context.stack.push(StackItem::Number(1.1f64));
+    context.stack.push(StackItem::Number(2.23f64));
 
     program_loop(&mut context, &mut stdout);
 
@@ -158,7 +169,6 @@ fn update_input_area(stdout: &mut Stdout, context: &AppContext) {
 }
 
 fn update_main_area(stdout: &mut Stdout, context: &AppContext) {
-
     let mode_text = match context.current_mode {
         AppMode::Stack => " stack",
         AppMode::Program => " program",
@@ -166,10 +176,50 @@ fn update_main_area(stdout: &mut Stdout, context: &AppContext) {
         AppMode::Variables => " variables",
     };
 
-    // print AppMode text
+    // Print AppMode text
     print_formatted_at(stdout, mode_text, &[TextFormat::Bold], 1, context.terminal_size.rows - 3);
 
-    //todo: match on current mode and establish area to print.
+    match context.current_mode {
+        AppMode::Stack => {stack_display(stdout, context)},
+        AppMode::Program => {},
+        AppMode::Matrix => {},
+        AppMode::Variables => {},
+    }
+
+}
+
+fn stack_display(stdout: &mut Stdout, context: &AppContext) {
+    let stack_display_start = 1; // Top row
+    let stack_display_end = context.terminal_size.rows - 3 - 1; // Just above the mode text row
+    let stack_size = context.stack.len();
+    let total_display_rows = (stack_display_end - stack_display_start) as usize;
+
+    for row in 0..total_display_rows {
+        let display_row = stack_display_end - 1 - row as u16;
+        // Calculate the index in the stack for this row
+        let display_index = stack_size.saturating_sub(total_display_rows) + row;
+
+        let line = if display_index < stack_size {
+            // If the index is within the stack, display the stack item
+            let item = &context.stack[display_index];
+            format!("{:2}: {}", display_index, format_stack_item(item))
+        } else {
+            // If the index is outside the stack, display just the index
+            format!("{:2}: ", display_index)
+        };
+        execute!(stdout, MoveTo(2, display_row), Print(line)).unwrap();
+    }
+}
+
+// Helper function to format a StackItem for display
+fn format_stack_item(item: &StackItem) -> String {
+    match item {
+        StackItem::Number(num) => format!("{:.2}", num),
+        StackItem::Array(arr) => {
+            let formatted_elements: Vec<String> = arr.iter().map(|n| format!("{:.2}", n)).collect();
+            format!("[{}]", formatted_elements.join(", "))
+        },
+    }
 }
 
 
