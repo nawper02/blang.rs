@@ -86,12 +86,15 @@ impl Drawable for StackDisplay {
             // Calculate the index in the stack for this row
             let display_index = stack_size.saturating_sub(total_display_rows) + row;
 
+            // Calculate the index for accessing the stack in reverse order
+            let stack_access_index = stack_size.saturating_sub(row + 1);
+
             let line = if display_index < stack_size {
-                // If the index is within the stack, display the stack item
-                let item = &context.stack[display_index];
+                // If the index is within the stack, display the stack item in reverse order
+                let item = &context.stack[stack_access_index];
                 format!("{:2}: {}", display_index, format_stack_item(item))
             } else {
-                // If the index is outside the stack, display just the index
+                // If the index is outside the stack, display just the index with no stack item
                 format!("{:2}: ", display_index)
             };
             execute!(stdout, MoveTo(2, display_row), Print(line)).unwrap();

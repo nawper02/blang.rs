@@ -8,6 +8,10 @@ pub(crate) fn parse_quick_cmds(context: &mut AppContext) {
             context.should_quit = LoopControl::Break;
             context.input_buffer.clear()
         },
+        "clear" => {
+            context.stack.clear();
+            context.input_buffer.clear()
+        },
         "*" => {
             context.input_buffer.clear()
         },
@@ -28,23 +32,78 @@ pub(crate) fn parse_quick_cmds(context: &mut AppContext) {
 }
 
 pub(crate) fn parse_input(context: &mut AppContext) {
-    // parse input into usable data.
+    // Parse input into usable data
     let buf: String = context.input_buffer.clone();
-    let parsed: Vec<&str> = buf.split_whitespace().collect(); // placeholder
+    match ParsedInput::create_from_buf(buf) {
+        Ok(parsed) => {
+            // Route parsed input into respective flow
+            match context.current_mode {
+                AppMode::Stack => stack_mode_flow(parsed, context),
+                AppMode::Program => program_mode_flow(parsed, context),
+                AppMode::Variables => variables_mode_flow(parsed, context),
+                AppMode::Matrix => matrix_mode_flow(parsed, context),
+            }
+        }
+        Err(error) => {
+            // todo: handle error
+        }
+    }
+}
 
-    // route parsed input into respective flow.
-    match context.current_mode {
-        AppMode::Stack => {
-            stack_mode_flow(parsed);
+pub(crate) enum InputType {
+    FunctionCall {
+        name: String,
+        args: Vec<String>,
+    },
+    Value(ValueType),
+}
+
+pub(crate) enum ValueType {
+    Number(f64),
+    Array(Vec<f64>),
+}
+
+pub(crate) struct ParsedInput {
+    pub(crate) input_type: InputType,
+}
+
+impl ParsedInput {
+    pub(crate) fn create_from_buf(buf: String) -> Result<ParsedInput, String> {
+        // Check for function calls
+        if buf.starts_with('.') {
+            let mut parts = buf.split_whitespace();
+            if let Some(name) = parts.next() {
+                let args = parts.map(|s| s.to_string()).collect::<Vec<String>>();
+                return Ok(ParsedInput {
+                    input_type: InputType::FunctionCall {
+                        name: name.trim_start_matches('.').to_string(),
+                        args,
+                    },
+                });
+            } else {
+                return Err("Invalid function call syntax.".to_string());
+            }
         }
-        AppMode::Program => {
-            program_mode_flow(parsed);
+
+        // Try to parse the input as a single number
+        if let Ok(num) = buf.parse::<f64>() {
+            return Ok(ParsedInput {
+                input_type: InputType::Value(ValueType::Number(num)),
+            });
         }
-        AppMode::Variables => {
-            variables_mode_flow(parsed);
+
+        // Try to parse the input as an array of numbers
+        let parts: Vec<&str> = buf.split_whitespace().collect();
+        if parts.iter().all(|part| part.parse::<f64>().is_ok()) {
+            let numbers = parts.iter()
+                .filter_map(|part| part.parse::<f64>().ok())
+                .collect::<Vec<f64>>();
+            return Ok(ParsedInput {
+                input_type: InputType::Value(ValueType::Array(numbers)),
+            });
         }
-        AppMode::Matrix => {
-            matrix_mode_flow(parsed);
-        }
+
+        // If input is not a number, an array of numbers, or a valid function call, return an error
+        Err("Failed to parse input.".to_string())
     }
 }

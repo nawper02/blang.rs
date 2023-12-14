@@ -2,12 +2,29 @@ use crossterm::event::{Event, KeyCode};
 use std::io::Stdout;
 use crate::data::context::AppContext;
 use crate::control::{parsing, visualization};
+use crate::control::parsing::{InputType, ValueType};
+use crate::stack::item::StackItem;
+use crate::stack::functions::route_function_call;
 
 // function that takes parsed inputs and routes them to functions in functions.rs
-pub(crate) fn stack_mode_flow(parsed: Vec<&str>) {println!("{:?}", parsed)}
-pub(crate) fn program_mode_flow(parsed: Vec<&str>) {}
-pub(crate) fn variables_mode_flow(parsed: Vec<&str>) {}
-pub(crate) fn matrix_mode_flow(parsed: Vec<&str>) {}
+pub(crate) fn stack_mode_flow(parsed: parsing::ParsedInput, context: &mut AppContext) {
+    match parsed.input_type {
+        InputType::FunctionCall { name, args } => {
+            if let Err(e) = route_function_call(name, args, context) {
+                // todo: handle error
+            }
+        },
+        InputType::Value(value_type) => {
+            match value_type {
+                ValueType::Number(num) => context.stack.push(StackItem::Number(num)),
+                ValueType::Array(arr) => context.stack.push(StackItem::Array(arr)),
+            }
+        },
+    }
+}
+pub(crate) fn program_mode_flow(parsed: parsing::ParsedInput, context: &mut AppContext) {}
+pub(crate) fn variables_mode_flow(parsed: parsing::ParsedInput, context: &mut AppContext) {}
+pub(crate) fn matrix_mode_flow(parsed: parsing::ParsedInput, context: &mut AppContext) {}
 
 pub(crate) fn process_event(event: Event, context: &mut AppContext, stdout: &mut Stdout) {
     match event {
