@@ -1,6 +1,6 @@
 use crossterm::event::{Event, KeyCode};
 use std::io::Stdout;
-use crate::data::context::{AppContext, ModeBehavior};
+use crate::data::context::{AppContext, ContextInteraction};
 use crate::control::{parsing, visualization};
 use crate::control::parsing::{InputType, ValueType};
 use crate::stack::item::StackItem;
@@ -41,16 +41,16 @@ pub(crate) fn process_event(event: Event, context: &mut AppContext, stdout: &mut
                     context.input_buffer.pop();
                 },
                 KeyCode::Up => {
-                    context.current_mode.on_up_arrow(context);
+                    context.on_up_arrow();
                 },
                 KeyCode::Down => {
-                    context.current_mode.on_down_arrow(context);
+                    context.on_down_arrow();
                 },
                 KeyCode::Left => {
-                    context.current_mode.on_left_arrow(context);
+                    context.on_left_arrow();
                 },
                 KeyCode::Right => {
-                    context.current_mode.on_right_arrow(context);
+                    context.on_right_arrow();
                 },
                 KeyCode::Enter => {
                     // send buffer to be parsed

@@ -1,5 +1,6 @@
 // src/data/context
 
+use crate::stack::functions::route_function_call;
 use crate::utils::misc::LoopControl;
 use crate::utils::terminal::TerminalSize;
 use crate::stack::item::StackItem;
@@ -48,16 +49,16 @@ impl AppMode {
     }
 }
 
-pub(crate) trait ModeBehavior {
-    fn on_up_arrow(&mut self, context: &mut AppContext);
-    fn on_down_arrow(&mut self, context: &mut AppContext);
-    fn on_left_arrow(&mut self, context: &mut AppContext);
-    fn on_right_arrow(&mut self, context: &mut AppContext);
+pub(crate) trait ContextInteraction {
+    fn on_up_arrow(&mut self);
+    fn on_down_arrow(&mut self);
+    fn on_left_arrow(&mut self);
+    fn on_right_arrow(&mut self);
 }
 
-impl ModeBehavior for AppMode {
-    fn on_up_arrow(&mut self, context: &mut AppContext) {
-        match self {
+impl ContextInteraction for AppContext {
+    fn on_up_arrow(&mut self) {
+        match self.current_mode {
             AppMode::Stack => { /* Stack-specific logic */ },
             AppMode::Program => { /* Program-specific logic */ },
             AppMode::Matrix => { /* Matrix-specific logic */ },
@@ -65,33 +66,25 @@ impl ModeBehavior for AppMode {
         }
     }
 
-    fn on_down_arrow(&mut self, context: &mut AppContext) {
-        match self {
-            AppMode::Stack => { /* Stack-specific logic */ },
+    fn on_down_arrow(&mut self) {
+        // Implement the logic for down arrow
+    }
+
+    fn on_left_arrow(&mut self) {
+        // Implement the logic for left arrow
+    }
+
+    fn on_right_arrow(&mut self) {
+        match self.current_mode {
+            AppMode::Stack => {
+                // Use route_function_call to call the dup function
+                if let Err(e) = route_function_call("dup".to_string(), Vec::new(), self) {
+                    // todo: handle error
+                }
+            },
             AppMode::Program => { /* Program-specific logic */ },
             AppMode::Matrix => { /* Matrix-specific logic */ },
             AppMode::Variables => { /* Variables-specific logic */ },
         }
     }
-
-    fn on_left_arrow(&mut self, context: &mut AppContext) {
-        match self {
-            AppMode::Stack => { /* Stack-specific logic */ },
-            AppMode::Program => { /* Program-specific logic */ },
-            AppMode::Matrix => { /* Matrix-specific logic */ },
-            AppMode::Variables => { /* Variables-specific logic */ },
-        }
-    }
-
-    fn on_right_arrow(&mut self, context: &mut AppContext) {
-        match self {
-            AppMode::Stack => { /* Stack-specific logic */ },
-            AppMode::Program => { /* Program-specific logic */ },
-            AppMode::Matrix => { /* Matrix-specific logic */ },
-            AppMode::Variables => { /* Variables-specific logic */ },
-        }
-    }
-
-    // Similarly implement on_down_arrow, on_left_arrow, on_right_arrow...
 }
-
