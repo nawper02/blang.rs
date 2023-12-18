@@ -28,11 +28,19 @@ pub(crate) fn format_stack_item(item: &StackItem) -> String {
     match item {
         StackItem::Number(num) => format!("{:.2}", num),
         StackItem::Array(arr) => {
-            let formatted_rows: Vec<String> = arr.iter().map(|row| {
-                let formatted_elements: Vec<String> = row.iter().map(|n| format!("{:.2}", n)).collect();
-                format!("[{}]", formatted_elements.join(", "))
-            }).collect();
-            formatted_rows.join("; ")
+            if arr.len() == 1 {
+                // Handle as a 1D array
+                format!("[{}]", arr[0].iter().map(|n| format!("{:.2}", n)).collect::<Vec<String>>().join(", "))
+            } else {
+                // Handle as a 2D array
+                let formatted_rows: Vec<String> = arr.iter().map(|row| {
+                    row.iter().map(|n| format!("{:.2}", n)).collect::<Vec<String>>().join(", ")
+                }).collect();
+                formatted_rows.join("; ")
+            }
         },
     }
 }
+
+
+

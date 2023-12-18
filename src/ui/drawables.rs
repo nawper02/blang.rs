@@ -7,6 +7,7 @@ use crossterm::terminal::{Clear, ClearType};
 use crate::data::context::AppContext;
 use crate::data::context::AppMode;
 use crate::ui::text_formatting::{print_formatted_at, format_stack_item, TextFormat};
+use crate::stack::item::StackItem;
 
 pub(crate) trait Drawable {
     fn draw(stdout: &mut Stdout, context: &AppContext); // perhaps in the future it will take &self.
@@ -77,27 +78,44 @@ pub(crate) struct StackDisplay;
 impl Drawable for StackDisplay {
     fn draw(stdout: &mut Stdout, context: &AppContext) {
         let stack_display_start = 1; // Top row
-        let stack_display_end = context.terminal_size.rows - 3 - 1; // Just above the mode text row
-        let stack_size = context.stack.len();
-        let total_display_rows = (stack_display_end - stack_display_start) as usize;
+        let stack_display_end = context.terminal_size.rows - 3 - 2; // Just above the mode text row
 
-        for row in 0..total_display_rows {
-            let display_row = stack_display_end - 1 - row as u16;
-            // Calculate the index in the stack for this row
-            let display_index = stack_size.saturating_sub(total_display_rows) + row;
+        let mut display_row = stack_display_end;
 
-            // Calculate the index for accessing the stack in reverse order
-            let stack_access_index = stack_size.saturating_sub(row + 1);
+        // Iterate over the stack in reverse
+        for stack_index in (0..context.stack.len()).rev() {
+            let item = &context.stack[stack_index];
+            let display_index = context.stack.len() - 1 - stack_index; // Correct the index order
 
-            let line = if display_index < stack_size {
-                // If the index is within the stack, display the stack item in reverse order
-                let item = &context.stack[stack_access_index];
-                format!("{:2}: {}", display_index, format_stack_item(item))
-            } else {
-                // If the index is outside the stack, display just the index with no stack item
-                format!("{:2}: ", display_index)
-            };
-            execute!(stdout, MoveTo(2, display_row), Print(line)).unwrap();
+            match item {
+                StackItem::Number(num) => {
+                    // For Number, display it on a single line
+                    if display_row > stack_display_start {
+                        let line = format!("{:2}: {:.2}", display_index, num);
+                        execute!(stdout, MoveTo(2, display_row), Print(line)).unwrap();
+                        display_row -= 1;
+                    }
+                },
+                StackItem::Array(arr) => {
+                    // For Array, display its dimensions
+                    if display_row > stack_display_start {
+                        let array_type = if arr.len() == 1 { "1D" } else { "2D" };
+                        let dimensions = if arr.len() == 1 { format!("{} elements", arr[0].len()) } else { format!("{}x{} elements", arr.len(), arr[0].len()) };
+                        let line = format!("{:2}: {} Array [{}]", display_index, array_type, dimensions);
+                        execute!(stdout, MoveTo(2, display_row), Print(line)).unwrap();
+                        display_row -= 1;
+                    }
+                },
+            }
+            if display_row <= stack_display_start {
+                break; // Stop if we've reached the top of the display area
+            }
+        }
+
+        // Fill remaining lines with '~'
+        while display_row > stack_display_start {
+            execute!(stdout, MoveTo(2, display_row), Print(format!(" ~"))).unwrap();
+            display_row -= 1;
         }
     }
 }
