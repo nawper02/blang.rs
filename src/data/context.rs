@@ -19,7 +19,12 @@ impl Default for AppContext {
             terminal_size: TerminalSize::new(),
             current_mode: AppMode::Stack,
             should_quit: LoopControl::Continue,
-            stack: Vec::new(),
+            stack: vec![
+                StackItem::Number(3.14),
+                StackItem::Array(vec![vec![1.0, 2.0, 3.0]]), // Represents a 1D array
+                StackItem::Array(vec![vec![4.0, 5.0, 6.0], vec![7.0, 8.0, 9.0]]), // Represents a 2D array
+            ],
+            //stack: Vec::new(),
         }
     }
 }
