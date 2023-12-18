@@ -115,7 +115,7 @@ impl ParsedInput {
                 input_type: InputType::Value(ValueType::Array(parsed_array)),
             });
         } else {
-            // Handle invalid input
+            // todo: Handle invalid input
         }
 
         // If input is not a number, an array of numbers, or a valid function call, return an error
