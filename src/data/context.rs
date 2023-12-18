@@ -48,3 +48,50 @@ impl AppMode {
     }
 }
 
+pub(crate) trait ModeBehavior {
+    fn on_up_arrow(&mut self, context: &mut AppContext);
+    fn on_down_arrow(&mut self, context: &mut AppContext);
+    fn on_left_arrow(&mut self, context: &mut AppContext);
+    fn on_right_arrow(&mut self, context: &mut AppContext);
+}
+
+impl ModeBehavior for AppMode {
+    fn on_up_arrow(&mut self, context: &mut AppContext) {
+        match self {
+            AppMode::Stack => { /* Stack-specific logic */ },
+            AppMode::Program => { /* Program-specific logic */ },
+            AppMode::Matrix => { /* Matrix-specific logic */ },
+            AppMode::Variables => { /* Variables-specific logic */ },
+        }
+    }
+
+    fn on_down_arrow(&mut self, context: &mut AppContext) {
+        match self {
+            AppMode::Stack => { /* Stack-specific logic */ },
+            AppMode::Program => { /* Program-specific logic */ },
+            AppMode::Matrix => { /* Matrix-specific logic */ },
+            AppMode::Variables => { /* Variables-specific logic */ },
+        }
+    }
+
+    fn on_left_arrow(&mut self, context: &mut AppContext) {
+        match self {
+            AppMode::Stack => { /* Stack-specific logic */ },
+            AppMode::Program => { /* Program-specific logic */ },
+            AppMode::Matrix => { /* Matrix-specific logic */ },
+            AppMode::Variables => { /* Variables-specific logic */ },
+        }
+    }
+
+    fn on_right_arrow(&mut self, context: &mut AppContext) {
+        match self {
+            AppMode::Stack => { /* Stack-specific logic */ },
+            AppMode::Program => { /* Program-specific logic */ },
+            AppMode::Matrix => { /* Matrix-specific logic */ },
+            AppMode::Variables => { /* Variables-specific logic */ },
+        }
+    }
+
+    // Similarly implement on_down_arrow, on_left_arrow, on_right_arrow...
+}
+

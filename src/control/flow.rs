@@ -1,10 +1,11 @@
 use crossterm::event::{Event, KeyCode};
 use std::io::Stdout;
-use crate::data::context::AppContext;
+use crate::data::context::{AppContext, ModeBehavior};
 use crate::control::{parsing, visualization};
 use crate::control::parsing::{InputType, ValueType};
 use crate::stack::item::StackItem;
 use crate::stack::functions::route_function_call;
+
 
 // function that takes parsed inputs and routes them to functions in functions.rs
 pub(crate) fn stack_mode_flow(parsed: parsing::ParsedInput, context: &mut AppContext) {
@@ -38,7 +39,19 @@ pub(crate) fn process_event(event: Event, context: &mut AppContext, stdout: &mut
                 KeyCode::Backspace => {
                     // delete
                     context.input_buffer.pop();
-                }
+                },
+                KeyCode::Up => {
+                    context.current_mode.on_up_arrow(context);
+                },
+                KeyCode::Down => {
+                    context.current_mode.on_down_arrow(context);
+                },
+                KeyCode::Left => {
+                    context.current_mode.on_left_arrow(context);
+                },
+                KeyCode::Right => {
+                    context.current_mode.on_right_arrow(context);
+                },
                 KeyCode::Enter => {
                     // send buffer to be parsed
                     parsing::parse_input(context);

@@ -1,7 +1,8 @@
 // blang.rs is a command line rpn calculator.
 
 // next:
-//      1.   stack view, commands
+//      0.
+//      1.   stack view -- impl mode behavior to select stack items, commands (for all types)
 //      2.   program view, text editing capabilites (unless just load files)
 //      3.   variables view, arrow key to navigate, enter to select and push
 //      4.   matrix view, arrow keys to navigate, input buffer routed to cells
