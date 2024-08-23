@@ -13,6 +13,15 @@ pub(crate) fn parse_quick_cmds(context: &mut AppContext) {
             context.input_buffer.clear()
         },
         "*" => {
+            let lhs = context.stack.pop().unwrap();
+            let rhs = context.stack.pop().unwrap();
+            match lhs*rhs {
+                Ok(result) =>
+                    {
+                        context.stack.push(result);
+                    },
+                Err(e) => ()
+            }
             context.input_buffer.clear()
         },
         "/" => {
